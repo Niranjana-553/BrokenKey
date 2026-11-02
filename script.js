@@ -225,9 +225,7 @@ function escapeHTML(value) {
   return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 }
 
-inputEl.addEventListener('keydown', (event) => {
-  if (event.key === 'Backspace') event.preventDefault();
-});
+
 
 inputEl.addEventListener('input', () => {
   const typed = inputEl.value;
@@ -247,7 +245,12 @@ inputEl.addEventListener('input', () => {
       charIndex++;
     }
   } else if (typed.length < charIndex) {
-    charIndex = typed.length;
+    while (charIndex > typed.length) {
+      charIndex--;
+      if (charStates[charIndex] === 'wrong') mistakes--;
+      if (charStates[charIndex] === 'correct') correctTyped--;
+      charStates[charIndex] = '';
+    }
   }
 
   renderPassage();
