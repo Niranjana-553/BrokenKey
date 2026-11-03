@@ -226,7 +226,6 @@ function escapeHTML(value) {
 }
 
 
-
 inputEl.addEventListener('input', () => {
   const typed = inputEl.value;
   if (typed.length > charIndex) {
@@ -245,11 +244,15 @@ inputEl.addEventListener('input', () => {
       charIndex++;
     }
   } else if (typed.length < charIndex) {
-    while (charIndex > typed.length) {
+    while(charIndex>typed.length){
       charIndex--;
-      if (charStates[charIndex] === 'wrong') mistakes--;
-      if (charStates[charIndex] === 'correct') correctTyped--;
-      charStates[charIndex] = '';
+      if(charStates[charIndex]==='wrong'){
+        mistakes--;
+      }
+      if(charStates[charIndex]==='correct'){
+        correctTyped--;
+      }
+      charStates[charIndex]='';
     }
   }
 
