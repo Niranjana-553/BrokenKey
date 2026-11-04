@@ -35,7 +35,8 @@ let currentPassage = '',
   timer = null,
   timeLeft = 30,
   timeLimit = 30,
-  startTime = null;
+  startTime = null,
+  previousTyped = '';
 
 let bestWPM = Number(localStorage.getItem('keyrush-best-wpm')) || 0;
 bestEl.textContent = bestWPM;
@@ -200,6 +201,7 @@ function loadPassage() {
   currentPassage = passages[Math.floor(Math.random() * passages.length)];
   charIndex = 0;
   charStates = new Array(currentPassage.length).fill('');
+  previousTyped = '';
   inputEl.value = '';
   inputEl.maxLength = currentPassage.length;
   renderPassage();
@@ -228,39 +230,66 @@ function escapeHTML(value) {
 
 inputEl.addEventListener('input', () => {
   const typed = inputEl.value;
- 
-  while (charIndex < typed.length && charIndex < currentPassage.length) {
-    totalTyped++;
-    const typedChar = typed[charIndex];
-    const targetChar = currentPassage[charIndex];
-    if (typedChar === targetChar) {
-      correctTyped++;
-      charStates[charIndex] = 'correct';
-    } else {
-      mistakes++;
-      charStates[charIndex] = 'wrong';
-      updateHeatmap();
+  const prevMistakes = mistakes;
+  let prefix = 0;
+  while(
+    prefix < previousTyped.length && 
+    prefix < typed.length &&
+    previousTyped[prefix] === typed[prefix]
+  ) prefix++;
+
+  let oldEnd = previousTyped.length;
+  let newEnd = typed.length;
+
+  while(oldEnd > prefix &&
+    newEnd > prefix &&
+    previousTyped[oldEnd-1] === typed[newEnd-1]
+  ){
+    oldEnd--;
+    newEnd--;
   }
-      charIndex++;
-    }
+
+  totalTyped += newEnd - prefix;
   
-  while(charIndex>typed.length){
-    charIndex--;
-    if(charStates[charIndex]==='wrong'){
-      mistakes--;
-    }
-    if(charStates[charIndex]==='correct'){
-      correctTyped--;
-    }
-    charStates[charIndex]='';
+ for(let i=prefix;i<previousTyped.length;i++)
+ {
+  if(charStates[i]==='wrong')mistakes--;
+  else if(charStates[i]==='correct')correctTyped--;
+  charStates[i]='';
+ }
+
+ for(let i = prefix; i <typed.length; i++){
+  if(typed[i]!==currentPassage[i]){
+    charStates[i]='wrong';
+    mistakes++;
+  }else{
+    charStates[i]='correct';
+    correctTyped++;
   }
-  
+ }
+
+ if(mistakes>prevMistakes)updateHeatmap();
+
+ previousTyped = typed;
+ charIndex = inputEl.selectionStart;
 
   renderPassage();
   updateStats();
 
-  if (charIndex === currentPassage.length) finishTest();
+  if (typed.length === currentPassage.length) finishTest();
 });
+
+inputEl.addEventListener('click', (e) => {
+  charIndex = inputEl.selectionStart;
+  renderPassage();
+});
+
+inputEl.addEventListener('keyup', () => {
+  charIndex = inputEl.selectionStart;
+  renderPassage();
+});
+
+inputEl.addEventListener('paste', (e) => e.preventDefault());
 
 function calculateWPM() {
   if (!startTime) return 0;
@@ -270,10 +299,10 @@ function calculateWPM() {
 }
 
 function calculateAccuracy() {
-  if (totalTyped === 0) return 100;
-  const rawAccuracy = Math.round(((totalTyped - mistakes) / totalTyped) * 100);
-  return Math.max(0, Math.min(100, rawAccuracy));
-}
+  const evaluated = correctTyped + mistakes ;
+  if (evaluated === 0) return 100;
+  return Math.round((correctTyped / evaluated)*100);  
+  }
 
 function updateStats() {
   wpmEl.textContent = calculateWPM();
@@ -341,6 +370,7 @@ function resetTest() {
   mistakes = 0;
   totalTyped = 0;
   correctTyped = 0;
+  previousTyped = '';
   timeLeft = timeLimit;
   inputEl.value = '';
   inputEl.disabled = true;
