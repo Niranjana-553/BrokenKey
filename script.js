@@ -228,38 +228,38 @@ function escapeHTML(value) {
 
 inputEl.addEventListener('input', () => {
   const typed = inputEl.value;
-  if (typed.length > charIndex) {
-    while (charIndex < typed.length && charIndex < currentPassage.length) {
-      totalTyped++;
-      const typedChar = typed[charIndex];
-      const targetChar = currentPassage[charIndex];
-      if (typedChar === targetChar) {
-        correctTyped++;
-        charStates[charIndex] = 'correct';
-      } else {
-        mistakes++;
-        charStates[charIndex] = 'wrong';
-        updateHeatmap();
-      }
+ 
+  while (charIndex < typed.length && charIndex < currentPassage.length) {
+    totalTyped++;
+    const typedChar = typed[charIndex];
+    const targetChar = currentPassage[charIndex];
+    if (typedChar === targetChar) {
+      correctTyped++;
+      charStates[charIndex] = 'correct';
+    } else {
+      mistakes++;
+      charStates[charIndex] = 'wrong';
+      updateHeatmap();
+  }
       charIndex++;
     }
-  } else if (typed.length < charIndex) {
-    while(charIndex>typed.length){
-      charIndex--;
-      if(charStates[charIndex]==='wrong'){
-        mistakes--;
-      }
-      if(charStates[charIndex]==='correct'){
-        correctTyped--;
-      }
-      charStates[charIndex]='';
+  
+  while(charIndex>typed.length){
+    charIndex--;
+    if(charStates[charIndex]==='wrong'){
+      mistakes--;
     }
+    if(charStates[charIndex]==='correct'){
+      correctTyped--;
+    }
+    charStates[charIndex]='';
   }
+  
 
   renderPassage();
   updateStats();
 
-  if (charIndex >= currentPassage.length - 3) finishTest();
+  if (charIndex === currentPassage.length) finishTest();
 });
 
 function calculateWPM() {
@@ -290,31 +290,47 @@ function startTimer() {
   drawGraph();
   timer = setInterval(() => {
     timeLeft--;
+    if (timeLeft <= 0) {
+        timeLeft = 0;
+        clearInterval(timer);
+        setTimeout(finishTest, 120);
+    }
     timeEl.innerHTML = `${timeLeft}<span class="unit">s</span>`;
     wpmEl.textContent = calculateWPM();
     recordGraphSample();
-    if (timeLeft <= 0) setTimeout(finishTest, 120);
-  }, 1000);
+}, 1000);
 }
+
 
 function finishTest() {
   if (timeLeft > 0) clearInterval(timer);
+
   timer = null;
   isTyping = false;
   inputEl.disabled = true;
   startBtn.disabled = false;
+
   statusEl.textContent = 'TEST COMPLETE';
+
   renderPassage();
   updateHeatmap();
   updateStats();
+
   const finalWPM = calculateWPM();
+  const finalAccuracy = calculateAccuracy();
+
   if (finalWPM > bestWPM) {
     bestWPM = finalWPM;
+
     localStorage.setItem('keyrush-best-wpm', bestWPM);
+    localStorage.setItem('keyrush-best-accuracy', finalAccuracy);
   }
+
   resultEl.classList.remove('hidden');
-  resultEl.textContent = `Test complete · ${finalWPM} WPM · ${mistakes} errors`;
+  resultEl.textContent =
+    `Test complete · ${finalWPM} WPM · ${mistakes} errors`;
 }
+
 
 function resetTest() {
   clearInterval(timer);
