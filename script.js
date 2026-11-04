@@ -217,10 +217,7 @@ function renderPassage() {
     html += `<span class="${cls}">${escapeHTML(currentPassage[i])}</span>`;
   }
   passageEl.innerHTML = html;
-  if (isTyping) {
-    const t0 = performance.now();
-    while (performance.now() - t0 < 25) {}
-  }
+  
 }
 
 function escapeHTML(value) {
@@ -230,7 +227,7 @@ function escapeHTML(value) {
 
 inputEl.addEventListener('input', () => {
   const typed = inputEl.value;
-  const prevMistakes = mistakes;
+  
   let prefix = 0;
   while(
     prefix < previousTyped.length && 
@@ -249,16 +246,19 @@ inputEl.addEventListener('input', () => {
     newEnd--;
   }
 
-  totalTyped += newEnd - prefix;
-  
- for(let i=prefix;i<previousTyped.length;i++)
+   
+  const suffixShifted = (oldEnd - prefix)!== (newEnd - prefix);
+  const oldAffectedEnd = suffixShifted ? previousTyped.length : oldEnd;
+  const newAffectedEnd = suffixShifted ? typed.length : newEnd;
+
+ for(let i=prefix;i<oldAffectedEnd;i++)
  {
   if(charStates[i]==='wrong')mistakes--;
   else if(charStates[i]==='correct')correctTyped--;
   charStates[i]='';
  }
 
- for(let i = prefix; i <typed.length; i++){
+ for(let i = prefix; i <newAffectedEnd; i++){
   if(typed[i]!==currentPassage[i]){
     charStates[i]='wrong';
     mistakes++;
@@ -268,28 +268,24 @@ inputEl.addEventListener('input', () => {
   }
  }
 
- if(mistakes>prevMistakes)updateHeatmap();
+ totalTyped = typed.length;
 
  previousTyped = typed;
  charIndex = inputEl.selectionStart;
 
   renderPassage();
   updateStats();
-
   if (typed.length === currentPassage.length) finishTest();
 });
 
-inputEl.addEventListener('click', (e) => {
+function syncCaret() {
+  if(charIndex === inputEl.selectionStart) return;
   charIndex = inputEl.selectionStart;
   renderPassage();
-});
+} 
 
-inputEl.addEventListener('keyup', () => {
-  charIndex = inputEl.selectionStart;
-  renderPassage();
-});
-
-inputEl.addEventListener('paste', (e) => e.preventDefault());
+inputEl.addEventListener('click', syncCaret);
+inputEl.addEventListener('keyup', syncCaret);
 
 function calculateWPM() {
   if (!startTime) return 0;
@@ -299,10 +295,10 @@ function calculateWPM() {
 }
 
 function calculateAccuracy() {
-  const evaluated = correctTyped + mistakes ;
-  if (evaluated === 0) return 100;
-  return Math.round((correctTyped / evaluated)*100);  
-  }
+  if (totalTyped === 0) return 100;
+  const rawAccuracy = Math.round(((totalTyped - mistakes) / totalTyped) * 100);
+  return Math.max(0, Math.min(100, rawAccuracy));
+}
 
 function updateStats() {
   wpmEl.textContent = calculateWPM();
